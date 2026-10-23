@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Ezici Koşucu - Grup Oyunu</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            background: #1a1a2e;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 15, 26, 0.94);
+            z-index: 10;
+            padding: 20px;
+            text-align: center;
+        }
+        .hidden {
+            display: none !important;
+        }
+        h1 {
+            font-size: 26px;
+            color: #e94560;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+        p.subtitle {
+            font-size: 14px;
+            color: #a0a0c0;
+            margin-bottom: 20px;
+        }
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-height: 55vh;
+            overflow-y: auto;
+            padding: 8px;
+            margin-bottom: 20px;
+        }
+        .char-card {
+            background: #16213e;
+            border: 2px solid #0f3460;
+            border-radius: 12px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .char-card:hover, .char-card.active {
+            border-color: #e94560;
+            background: #0f3460;
+            transform: scale(1.05);
+            box-shadow: 0 0 12px rgba(233, 69, 96, 0.5);
+        }
+        .char-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #fff;
+            margin-bottom: 6px;
+            background-color: #333;
+        }
+        .char-name {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .btn {
+            background: linear-gradient(45deg, #e94560, #0f3460);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+        }
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .hud-box {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .controls-hint {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="hud">
+        <div class="hud-box">Skor: <span id="score">0</span></div>
+        <div class="hud-box" id="active-char-name">Karakter</div>
+    </div>
+
+    <div class="controls-hint">PC: Yön Tuşları / Mobil: Ekranı Kaydır</div>
+
+    <div id="menu-screen" class="screen">
+        <h1>EZİCİ KOŞUCU</h1>
+        <p class="subtitle">Oynamak istediğin grup üyesini seç!</p>
+        <div class="character-grid" id="char-grid"></div>
+        <button class="btn" id="start-btn">OYUNA BAŞLA</button>
+    </div>
+
+    <div id="gameover-screen" class="screen hidden">
+        <h1 style="color: #ff4d4d;">OYUN BİTTİ!</h1>
+        <p class="subtitle">Notaya çarptın!</p>
+        <p style="font-size: 20px; margin-bottom: 20px;">Toplam Skor: <span id="final-score" style="color: #4eacc5; font-weight: bold;">0</span></p>
+        <button class="btn" id="restart-btn">TEKRAR OYNA</button>
+    </div>
+</div>
+
+<script>
+    const CHARACTERS = [
+        {
+            id: 1,
+            name: "Efe",
+            img: "87b3cfb6f7b6e696ca4ccb8f576b151c.jpg", 
+            audio: "7dc52c7de788e8681515863d935e7b4b (audio-extractor.net).mp3",
+            color: "#e94560"
+        },
+        {
+            id: 2,
+            name: "Arda",
+            img: "f3c5194d4e9cb7771ae51e47d00b7cc1.jpg",
+            audio: "82f55b0306acc603d4a590fda2996151 (audio-extractor.net).mp3",
+            color: "#0f3460"
+        },
+        {
+            id: 3,
+            name: "Batu",
+            img: "IMG_20261022_163354_325.jpg",
+            audio: "c15c6585dbf623b4405aff2f7112b0f1 (audio-extractor.net).mp3",
+            color: "#e5b8f4"
+        },
+        {
